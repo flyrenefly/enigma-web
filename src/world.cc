@@ -2535,12 +2535,12 @@ void DumpObjectInfo() {
 static std::string JsonEscape(const std::string &s) {
     std::string r;
     for (unsigned char c : s) {
-        if (c == '"' || c == '\') {
-            r += '\';
+        if (c == '"' || c == '\\') {
+            r += '\\';
             r += (char)c;
         } else if (c < 0x20) {
             char buf[8];
-            snprintf(buf, sizeof buf, "\u%04x", c);
+            snprintf(buf, sizeof buf, "\\u%04x", c);
             r += buf;
         } else
             r += (char)c;

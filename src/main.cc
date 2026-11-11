@@ -770,7 +770,7 @@ static void exportLevelsJson(const std::string &dir) {
     for (auto &level : proxies) {
         std::string name = level->getNormLevelPath();
         for (auto &c : name)
-            if (c == '/' || c == '\' || c == ':')
+            if (c == '/' || c == '\\' || c == ':')
                 c = '~';
         const std::string path = dir + "/" + name + ".json";
         sound::TempDisableSound();
