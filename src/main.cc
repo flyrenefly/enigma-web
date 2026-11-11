@@ -55,6 +55,12 @@
 #include <cstdio>
 #include <ctime>
 #include <fstream>
+#include <set>
+#include <sstream>
+#include <csignal>
+#ifdef __linux__
+#include <unistd.h>
+#endif
 #include <iostream>
 #include <xercesc/dom/DOM.hpp>
 #include <xercesc/framework/XMLRecognizer.hpp>
@@ -763,35 +769,76 @@ void Application::updateMac1_00() {
 #endif
 
 // murmel.games: with ENIGMA_EXPORT_JSON=<dir>, --makepreview exports every level's
-// loaded world as JSON instead of rendering previews.
+// loaded world as JSON instead of rendering previews. Levels already exported or
+// listed in the file ENIGMA_EXPORT_SKIP are skipped, so a rerun continues. A level
+// that does not load within 20 s ends the process with EXPORT-HANG (Linux).
+static std::string g_exportCurrent;
+
+#ifdef __linux__
+static void exportAlarm(int) {
+    fprintf(stderr, "EXPORT-HANG %s\n", g_exportCurrent.c_str());
+    fflush(stderr);
+    _exit(3);
+}
+#endif
+
 static void exportLevelsJson(const std::string &dir) {
     const auto &proxies = lev::Proxy::getProxies();
-    int ok = 0, failed = 0;
+    std::set<std::string> skip;
+    if (const char *skipFile = getenv("ENIGMA_EXPORT_SKIP")) {
+        std::ifstream in(skipFile);
+        std::string line;
+        while (std::getline(in, line))
+            if (!line.empty())
+                skip.insert(line);
+    }
+#ifdef __linux__
+    signal(SIGALRM, exportAlarm);
+#endif
+    int ok = 0, failed = 0, skipped = 0, n = 0;
+    const int total = static_cast<int>(proxies.size());
     for (auto &level : proxies) {
-        std::string name = level->getNormLevelPath();
+        ++n;
+        const std::string levelPath = level->getNormLevelPath();
+        std::string name = levelPath;
         for (auto &c : name)
-            if (c == '/' || c == '\\' || c == ':')
+            if (c == '/' || c == (char)92 || c == ':')
                 c = '~';
         const std::string path = dir + "/" + name + ".json";
+        if (skip.count(levelPath) || std::ifstream(path.c_str()).good()) {
+            ++skipped;
+            continue;
+        }
+        g_exportCurrent = levelPath;
+        fprintf(stderr, "EXPORT-START %d/%d %s\n", n, total, levelPath.c_str());
+        fflush(stderr);
+#ifdef __linux__
+        alarm(20);
+#endif
         sound::TempDisableSound();
         try {
             server::Msg_LoadLevel(level, true);
-            std::ofstream os(path.c_str());
-            os << "{\"id\":\"" << level->getId() << "\",\"path\":\"" << level->getNormLevelPath()
+            std::ostringstream os;
+            os << "{\"id\":\"" << level->getId() << "\",\"path\":\"" << levelPath
                << "\",\"release\":" << level->getReleaseVersion() << ",\"world\":";
             ExportWorldJson(os);
             os << "}\n";
+            std::ofstream(path.c_str()) << os.str();
             ++ok;
         } catch (XLevelLoading &err) {
-            fprintf(stderr, "EXPORT-FAIL %s: %s\n", level->getNormLevelPath().c_str(), err.what());
+            fprintf(stderr, "EXPORT-FAIL %s: %s\n", levelPath.c_str(), err.what());
             ++failed;
         } catch (std::exception &err) {
-            fprintf(stderr, "EXPORT-FAIL %s: %s\n", level->getNormLevelPath().c_str(), err.what());
+            fprintf(stderr, "EXPORT-FAIL %s: %s\n", levelPath.c_str(), err.what());
             ++failed;
         }
+#ifdef __linux__
+        alarm(0);
+#endif
         sound::TempReEnableSound();
     }
-    fprintf(stderr, "EXPORT-DONE ok=%d failed=%d\n", ok, failed);
+    fprintf(stderr, "EXPORT-DONE ok=%d failed=%d skipped=%d\n", ok, failed, skipped);
+    fflush(stderr);
 }
 
 void Application::createPreviews() {
