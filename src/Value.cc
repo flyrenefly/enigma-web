@@ -409,6 +409,21 @@ namespace enigma {
         }
     }
 
+    std::string Value::exportString() const {
+        switch (type) {
+            case BOOL: return val.dval[0] != 0 ? "true" : "false";
+            case DOUBLE: return ecl::strf("%g", val.dval[0]);
+            case OBJECT: return ecl::strf("#%d", (int)val.dval[0]);
+            case STRING:
+            case GROUP:
+            case TOKENS:
+            case NAMEDOBJECT: return val.str;
+            case POSITION:
+            case GRIDPOS: return ecl::strf("%g,%g", val.dval[0], val.dval[1]);
+            default: return "";
+        }
+    }
+
     bool Value::toBool() const {
         switch (type) {
             case BOOL :

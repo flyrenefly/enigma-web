@@ -2553,9 +2553,11 @@ static void JsonObject(std::ostream &os, const Object *o) {
         os << "null";
         return;
     }
-    os << "{\"k\":\"" << JsonEscape(o->getKind()) << "\"";
+    os << "{\"k\":\"" << JsonEscape(o->getKind()) << "\",\"$id\":\"" << o->getId() << "\"";
     for (const auto &a : o->get_attribs())
-        os << ",\"" << JsonEscape(a.first) << "\":\"" << JsonEscape(a.second.toString()) << "\"";
+        os << ",\"" << JsonEscape(a.first) << "\":\"" << JsonEscape(a.second.exportString()) << "\"";
+    if (Value st = o->getAttr("state"))
+        os << ",\"$state\":\"" << JsonEscape(st.exportString()) << "\"";
     os << "}";
 }
 

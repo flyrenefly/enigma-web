@@ -224,6 +224,9 @@ namespace enigma {
          * for any other value.
          */
         bool toBool() const;
+
+        /// murmel.games export: every type as text (objects as "#id", lists as descriptors)
+        std::string exportString() const;
         
         /**
          * Returns the value converted to a vector position with a centering of all
