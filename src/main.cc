@@ -450,7 +450,8 @@ void Application::init(int argc, char **argv)
     // ----- Load level packs -- needs state
     lev::Index::initGroups();
     oxyd::Init(!isMakePreviews);  // Load oxyd data files - must be first to create correct proxies
-    lev::PersistentIndex::registerPersistentIndices(ap.makepreview);
+    // murmel.games export needs the packs fully registered (preview mode only queues them)
+    lev::PersistentIndex::registerPersistentIndices(ap.makepreview && !getenv("ENIGMA_EXPORT_JSON"));
     if (!isMakePreviews) {
         lua::DoFile(L, "levels/index.lua");
         lua::DoSubfolderFile(L, "levels", "index.lua");

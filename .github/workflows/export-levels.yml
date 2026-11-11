@@ -32,15 +32,15 @@ jobs:
           mkdir -p "$HOME"
           touch skip.txt export.log
           echo "== diagnose" >> export.log
-          timeout -k 5 60 xvfb-run -a ./build/src/enigma --dumpinfo --log --data "$PWD/data" >> export.log 2>&1 || true
-          timeout -k 5 90 xvfb-run -a ./build/src/enigma --makepreview --log --nosound --nomusic --window --data "$PWD/data" > diag.log 2>&1 || true
+          timeout -k 5 60 xvfb-run -a ./build/src/enigma --dumpinfo --log >> export.log 2>&1 || true
+          timeout -k 5 90 xvfb-run -a ./build/src/enigma --makepreview --log --nosound --nomusic --window > diag.log 2>&1 || true
           head -c 20000 diag.log >> export.log
           tail -n 60 export.log
           # Each run continues where the last one stopped; a level that hangs or
           # crashes is put on the skip list and the export is restarted.
           for attempt in $(seq 1 60); do
             echo "== run $attempt" >> export.log
-            timeout -k 10 1200 xvfb-run -a ./build/src/enigma --makepreview --nosound --nomusic --window --data "$PWD/data" >> export.log 2>&1 || true
+            timeout -k 10 1200 xvfb-run -a ./build/src/enigma --makepreview --nosound --nomusic --window >> export.log 2>&1 || true
             if ! grep -q EXPORT-START export.log; then echo "no export started"; break; fi
             if tail -n 3 export.log | grep -q EXPORT-DONE; then break; fi
             bad=$(grep -oE '^EXPORT-(HANG|START [0-9]+/[0-9]+) .*' export.log | tail -n 1 | awk '{print $NF}')
