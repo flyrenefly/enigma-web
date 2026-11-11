@@ -1,0 +1,40 @@
+name: Export levels (murmel.games)
+
+on:
+  push:
+    branches: [level-export]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev \
+            libsdl2-ttf-dev libxerces-c-dev libcurl4-openssl-dev zlib1g-dev xvfb
+      - name: Build Enigma
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENIGMA_SYSTEM_DATA_DIR="$GITHUB_WORKSPACE/data"
+          cmake --build build -j4 --target enigma
+      - name: Export all levels as JSON
+        run: |
+          mkdir -p export
+          export ENIGMA_EXPORT_JSON="$PWD/export" SDL_AUDIODRIVER=dummy HOME="$RUNNER_TEMP/home"
+          mkdir -p "$HOME"
+          xvfb-run -a ./build/src/enigma --makepreview --nosound --nomusic --window > export.log 2>&1 || true
+          grep -E "EXPORT-(DONE|FAIL)" export.log | tail -50 || true
+          tail -30 export.log
+          ls export | wc -l
+      - uses: actions/upload-artifact@v7
+        with:
+          name: enigma-levels-json
+          path: |
+            export/
+            export.log
+          retention-days: 30

@@ -2529,4 +2529,64 @@ void DumpObjectInfo() {
     objectRepos->dump_info();
 }
 
+/* Export of the loaded world as JSON (murmel.games level converter).
+   Every field: [floor, stone, item], each null or {"k": kind, attr: value...};
+   actors: position and the actor object. */
+static std::string JsonEscape(const std::string &s) {
+    std::string r;
+    for (unsigned char c : s) {
+        if (c == '"' || c == '\') {
+            r += '\';
+            r += (char)c;
+        } else if (c < 0x20) {
+            char buf[8];
+            snprintf(buf, sizeof buf, "\u%04x", c);
+            r += buf;
+        } else
+            r += (char)c;
+    }
+    return r;
+}
+
+static void JsonObject(std::ostream &os, const Object *o) {
+    if (o == nullptr) {
+        os << "null";
+        return;
+    }
+    os << "{\"k\":\"" << JsonEscape(o->getKind()) << "\"";
+    for (const auto &a : o->get_attribs())
+        os << ",\"" << JsonEscape(a.first) << "\":\"" << JsonEscape(a.second.toString()) << "\"";
+    os << "}";
+}
+
+void ExportWorldJson(std::ostream &os) {
+    os << "{\"w\":" << level->width << ",\"h\":" << level->height << ",\"cells\":[";
+    for (int y = 0; y < level->height; ++y) {
+        for (int x = 0; x < level->width; ++x) {
+            const Field *f = level->getField(GridPos(x, y));
+            if (x || y)
+                os << ",";
+            os << "[";
+            JsonObject(os, f ? f->floor : nullptr);
+            os << ",";
+            JsonObject(os, f ? f->stone : nullptr);
+            os << ",";
+            JsonObject(os, f ? f->item : nullptr);
+            os << "]";
+        }
+    }
+    os << "],\"actors\":[";
+    bool first = true;
+    for (Actor *a : level->actorList) {
+        if (!first)
+            os << ",";
+        first = false;
+        const ecl::V2 &p = a->getPos();
+        os << "{\"x\":" << p[0] << ",\"y\":" << p[1] << ",\"o\":";
+        JsonObject(os, a);
+        os << "}";
+    }
+    os << "]}";
+}
+
 }  // namespace enigma

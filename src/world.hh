@@ -19,6 +19,7 @@
 #ifndef WORLD_HH_INCLUDED
 #define WORLD_HH_INCLUDED
 
+#include <iosfwd>
 #include "enigma.hh"
 #include "Object.hh"
 #include "GridObject.hh"
@@ -272,6 +273,9 @@ struct Field {
 };
 
 const Field *GetField(GridPos p);
+
+/*! Write the loaded world as JSON (used by the level export). */
+void ExportWorldJson(std::ostream &os);
 
 /* -------------------- Stones -------------------- */
 

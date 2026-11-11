@@ -762,7 +762,43 @@ void Application::updateMac1_00() {
 }
 #endif
 
+// murmel.games: with ENIGMA_EXPORT_JSON=<dir>, --makepreview exports every level's
+// loaded world as JSON instead of rendering previews.
+static void exportLevelsJson(const std::string &dir) {
+    const auto &proxies = lev::Proxy::getProxies();
+    int ok = 0, failed = 0;
+    for (auto &level : proxies) {
+        std::string name = level->getNormLevelPath();
+        for (auto &c : name)
+            if (c == '/' || c == '\' || c == ':')
+                c = '~';
+        const std::string path = dir + "/" + name + ".json";
+        sound::TempDisableSound();
+        try {
+            server::Msg_LoadLevel(level, true);
+            std::ofstream os(path.c_str());
+            os << "{\"id\":\"" << level->getId() << "\",\"path\":\"" << level->getNormLevelPath()
+               << "\",\"release\":" << level->getReleaseVersion() << ",\"world\":";
+            ExportWorldJson(os);
+            os << "}\n";
+            ++ok;
+        } catch (XLevelLoading &err) {
+            fprintf(stderr, "EXPORT-FAIL %s: %s\n", level->getNormLevelPath().c_str(), err.what());
+            ++failed;
+        } catch (std::exception &err) {
+            fprintf(stderr, "EXPORT-FAIL %s: %s\n", level->getNormLevelPath().c_str(), err.what());
+            ++failed;
+        }
+        sound::TempReEnableSound();
+    }
+    fprintf(stderr, "EXPORT-DONE ok=%d failed=%d\n", ok, failed);
+}
+
 void Application::createPreviews() {
+    if (const char *dir = getenv("ENIGMA_EXPORT_JSON")) {
+        exportLevelsJson(dir);
+        return;
+    }
     app.state->setProperty("Difficulty", DIFFICULTY_HARD);  // will not be saved
     const auto &proxies = lev::Proxy::getProxies();
 
