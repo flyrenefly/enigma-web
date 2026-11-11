@@ -2588,6 +2588,18 @@ void ExportWorldJson(std::ostream &os) {
         JsonObject(os, a);
         os << "}";
     }
+    // Rubber bands (ot_rubberband): anchors as "#id" or name, lengths after postAddition.
+    os << "],\"rubberbands\":[";
+    first = true;
+    for (auto rb : level->rubberBands) {
+        if (!first)
+            os << ",";
+        first = false;
+        os << "{\"$id\":\"" << rb->getId() << "\"";
+        for (const char *key : {"anchor1", "anchor2", "strength", "length", "threshold", "min", "max"})
+            os << ",\"" << key << "\":\"" << JsonEscape(rb->getAttr(key).exportString()) << "\"";
+        os << "}";
+    }
     os << "]}";
 }
 
