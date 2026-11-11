@@ -11,6 +11,7 @@ permissions:
 jobs:
   export:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
       - name: Install dependencies
@@ -23,18 +24,32 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENIGMA_SYSTEM_DATA_DIR="$GITHUB_WORKSPACE/data"
           cmake --build build -j4 --target enigma
       - name: Export all levels as JSON
+        timeout-minutes: 100
         run: |
           mkdir -p export
-          export ENIGMA_EXPORT_JSON="$PWD/export" SDL_AUDIODRIVER=dummy HOME="$RUNNER_TEMP/home"
+          export ENIGMA_EXPORT_JSON="$PWD/export" ENIGMA_EXPORT_SKIP="$PWD/skip.txt"
+          export SDL_AUDIODRIVER=dummy HOME="$RUNNER_TEMP/home"
           mkdir -p "$HOME"
-          xvfb-run -a ./build/src/enigma --makepreview --nosound --nomusic --window > export.log 2>&1 || true
-          grep -E "EXPORT-(DONE|FAIL)" export.log | tail -50 || true
-          tail -30 export.log
-          ls export | wc -l
+          touch skip.txt export.log
+          # Each run continues where the last one stopped; a level that hangs or
+          # crashes is put on the skip list and the export is restarted.
+          for attempt in $(seq 1 60); do
+            echo "== run $attempt" >> export.log
+            xvfb-run -a ./build/src/enigma --makepreview --nosound --nomusic --window >> export.log 2>&1 || true
+            if tail -n 3 export.log | grep -q EXPORT-DONE; then break; fi
+            bad=$(grep -oE '^EXPORT-(HANG|START [0-9]+/[0-9]+) .*' export.log | tail -n 1 | awk '{print $NF}')
+            echo "problem level: ${bad:-unknown}"
+            if [ -n "$bad" ]; then echo "$bad" >> skip.txt; else break; fi
+          done
+          echo "--- skipped (hang/crash):"; cat skip.txt
+          grep -E "EXPORT-DONE|EXPORT-FAIL" export.log | tail -n 40 || true
+          echo "exported files: $(ls export | wc -l)"
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: enigma-levels-json
           path: |
             export/
             export.log
+            skip.txt
           retention-days: 30
