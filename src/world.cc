@@ -2558,6 +2558,11 @@ static void JsonObject(std::ostream &os, const Object *o) {
         os << ",\"" << JsonEscape(a.first) << "\":\"" << JsonEscape(a.second.exportString()) << "\"";
     if (Value st = o->getAttr("state"))
         os << ",\"$state\":\"" << JsonEscape(st.exportString()) << "\"";
+    // Flag attributes that are not in the attribute map (e.g. hollow puzzle stones).
+    if (o->getObjectType() == Object::STONE)
+        if (Value h = o->getAttr("hollow"))
+            if (h.toBool())
+                os << ",\"$hollow\":\"true\"";
     os << "}";
 }
 
