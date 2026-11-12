@@ -2559,10 +2559,15 @@ static void JsonObject(std::ostream &os, const Object *o) {
     if (Value st = o->getAttr("state"))
         os << ",\"$state\":\"" << JsonEscape(st.exportString()) << "\"";
     // Flag attributes that are not in the attribute map (e.g. hollow puzzle stones).
-    if (o->getObjectType() == Object::STONE)
+    if (o->getObjectType() == Object::STONE) {
         if (Value h = o->getAttr("hollow"))
             if (h.toBool())
                 os << ",\"$hollow\":\"true\"";
+        // e.g. passage stones keep their flavor in the object flags
+        if (o->get_attribs().find("flavor") == o->get_attribs().end())
+            if (Value fl = o->getAttr("flavor"))
+                os << ",\"$flavor\":\"" << JsonEscape(fl.exportString()) << "\"";
+    }
     os << "}";
 }
 
