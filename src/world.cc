@@ -2563,6 +2563,11 @@ static void JsonObject(std::ostream &os, const Object *o) {
         if (Value h = o->getAttr("hollow"))
             if (h.toBool())
                 os << ",\"$hollow\":\"true\"";
+        // movable=true on mirrors, rotators, impulse stones … sets OBJBIT_MOVABLE only
+        if (o->get_attribs().find("movable") == o->get_attribs().end())
+            if (Value mv = o->getAttr("movable"))
+                if (mv.toBool())
+                    os << ",\"$movable\":\"true\"";
         // e.g. passage stones keep their flavor in the object flags
         if (o->get_attribs().find("flavor") == o->get_attribs().end())
             if (Value fl = o->getAttr("flavor"))
