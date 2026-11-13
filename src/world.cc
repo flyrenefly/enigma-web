@@ -2568,6 +2568,12 @@ static void JsonObject(std::ostream &os, const Object *o) {
             if (Value fl = o->getAttr("flavor"))
                 os << ",\"$flavor\":\"" << JsonEscape(fl.exportString()) << "\"";
     }
+    // Horse actors keep destination, strength, steady, loop and destidx outside the attribute map.
+    if (o->getClass() == "ac_horse") {
+        for (const char *k : {"destination", "strength", "steady", "loop", "destidx"})
+            if (Value v = o->getAttr(k))
+                os << ",\"$" << k << "\":\"" << JsonEscape(v.exportString()) << "\"";
+    }
     os << "}";
 }
 
